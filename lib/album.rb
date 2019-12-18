@@ -67,4 +67,9 @@ class Album
       @@albums.delete(self.id)
   end
 
+  def songs
+    # binding.pry
+   Song.find_by_album(self.id)
+  end
+
 end
