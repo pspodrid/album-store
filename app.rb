@@ -4,7 +4,9 @@ require('./lib/album')
 require('pry')
 also_reload('lib/**/*.rb')
 require('./lib/song')
+require("pg")
 
+DB = PG.connect({:dbname => "record_store"})
 # ruby app.rb for Sinatra
 # localhost:4567
 

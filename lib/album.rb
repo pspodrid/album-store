@@ -1,32 +1,37 @@
 class Album
-  attr_reader :id, :name, :artist, :genre  #Our new save method will need reader methods.
+  attr_reader :name
+  attr_reader :id
 
-  @@albums = {}
-  @@sold_albums = {}
-  @@total_rows = 0 # We've added a class variable to keep track of total rows and increment the value when an ALbum is added.
-
-  def initialize(name, id, artist, genre) # We've added id as a second parameter.
-    @name = name
-    @id = id || @@total_rows += 1  # We've added code to handle the id.
-    @artist = artist
-    @genre = genre
+  def initialize(attributes)
+    @name = attributes.fetch(:name)
+    @id = attributes.fetch(:id) # Note that this line has been changed.
   end
 
   def update(name)
     @name = name
+    DB.exec("UPDATE albums SET name = '#{@name}' WHERE id = #{@id};")
   end
 
   def save
-    @@albums[self.id] = Album.new(self.name, self.id, self.artist, self.genre)
+    result = DB.exec("INSERT INTO albums (name) VALUES ('#{@name}') RETURNING id;")
+    @id = result.first().fetch("id").to_i
   end
 
   def ==(album_to_compare)
-    self.name() == album_to_compare.name() && self.artist() == album_to_compare.artist() && self.genre() == album_to_compare.genre()
+    self.name() == album_to_compare.name() && self.id() == album_to_compare.id()
   end
 
   def self.all
-    @@albums.values()
+    returned_albums = DB.exec("SELECT * FROM albums;")
+    albums = []
+    returned_albums.each() do |album|
+      name = album.fetch("name")
+      id = album.fetch("id").to_i
+      albums.push(Album.new({:name => name, :id => id}))
+    end
+    albums
   end
+
   def self.get_sold
     @@sold_albums.values()
   end
@@ -36,30 +41,32 @@ class Album
   # end
 
   def self.clear
-    @@albums = {}
-    @@sold_albums = {}
-    @@total_rows = 0
+    DB.exec("DELETE FROM albums *;")
   end
 
   def self.find(id)
-    @@albums[id]
+    album = DB.exec("SELECT * FROM albums WHERE id = #{id};").first
+    name = album.fetch("name")
+    id = album.fetch("id").to_i
+    Album.new({:name => name, :id => id})
   end
 
   def self.search(string)
     @@albums.values().select {|e| /#{string}/i.match(e.name) }
   end
 
-  def self.sort(input)
-    # @@albums.sort_by {|e| input.match(e.name) }
-    if input == 'artist'
-      @@albums.values().sort{ |a, b| a.artist <=> b.artist }
-    elsif input == 'name'
-      @@albums.values().sort{ |a, b| a.name <=> b.name }
-    end
-  end
+  # def self.sort(input)
+  #   # @@albums.sort_by {|e| input.match(e.name) }
+  #   if input == 'artist'
+  #     @@albums.values().sort{ |a, b| a.artist <=> b.artist }
+  #   elsif input == 'name'
+  #     @@albums.values().sort{ |a, b| a.name <=> b.name }
+  #   end
+  # end
 
   def delete
-    @@albums.delete(self.id)
+    DB.exec("DELETE FROM albums WHERE id = #{@id};")
+    DB.exec("DELETE FROM songs WHERE album_id = #{@id};") # new code
   end
 
   def buy_album
